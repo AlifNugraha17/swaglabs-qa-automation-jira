@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Grafana - QA Performance & Load Testing Dashboard (SCRUM-11)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        body { background-color: #111217; color: #ccccdc; padding: 20px; }
+        .topbar { display: flex; justify-content: space-between; align-items: center; background: #181b1f; padding: 14px 24px; border-bottom: 1px solid #2c3235; border-radius: 6px; margin-bottom: 20px; }
+        .topbar-title { display: flex; align-items: center; gap: 12px; font-size: 18px; font-weight: 600; color: #ffffff; }
+        .grafana-badge { background: #f46800; color: #fff; padding: 4px 10px; border-radius: 4px; font-weight: 700; font-size: 13px; }
+        .time-badge { background: #22252b; border: 1px solid #363c42; padding: 6px 14px; border-radius: 4px; font-size: 13px; color: #5794f2; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+        .panel { background: #181b1f; border: 1px solid #2c3235; border-radius: 6px; padding: 16px; }
+        .panel-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #8e8e9e; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .stat-value { font-size: 32px; font-weight: 700; }
+        .stat-sub { font-size: 12px; margin-top: 6px; color: #8e8e9e; }
+        .green { color: #73bf69; }
+        .orange { color: #ff9830; }
+        .red { color: #f2495c; }
+        .blue { color: #5794f2; }
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+        .chart-box { height: 280px; position: relative; }
+        .alert-banner { background: rgba(242, 73, 92, 0.12); border-left: 4px solid #f2495c; padding: 14px 18px; border-radius: 4px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="topbar-title">
+            <span class="grafana-badge">GRAFANA QA</span>
+            <span>Swag Labs E-Commerce — Load Testing & SLA Dashboard (Ticket: SCRUM-11)</span>
+        </div>
+        <div class="time-badge">🔍 Last 15 minutes | Refresh: Live (5s) | Env: production (saucedemo.com)</div>
+    </div>
+
+    <div class="alert-banner">
+        <div>
+            <strong style="color: #f2495c;">🚨 GRAFANA ALERT FIRING [SCRUM-11]:</strong>
+            <span>p95 Login Response Time reached <strong>5569.6 ms</strong> at 500 Virtual Users (Exceeds 2000 ms SLA threshold!)</span>
+        </div>
+        <span style="background:#f2495c; color:#fff; padding:4px 10px; border-radius:4px; font-size:12px; font-weight:600;">STATE: ALERTING</span>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="panel">
+            <div class="panel-title"><span>Peak Virtual Users (VUs)</span><span>👤</span></div>
+            <div class="stat-value blue">500 VUs</div>
+            <div class="stat-sub">Concurrent simulated shoppers</div>
+        </div>
+        <div class="panel">
+            <div class="panel-title"><span>Peak Throughput (RPS)</span><span>⚡</span></div>
+            <div class="stat-value green">1106.3 req/s</div>
+            <div class="stat-sub">Requests handled per second</div>
+        </div>
+        <div class="panel">
+            <div class="panel-title"><span>Peak p95 Response Time</span><span>⏱️</span></div>
+            <div class="stat-value red">5569.6 ms</div>
+            <div class="stat-sub">SLA Limit: &lt; 2000 ms (BREACHED!)</div>
+        </div>
+        <div class="panel">
+            <div class="panel-title"><span>Peak Error Rate (HTTP 5xx)</span><span>🐞</span></div>
+            <div class="stat-value orange">6.39%</div>
+            <div class="stat-sub">SLA Limit: &lt; 0.1% (SCRUM-11 Defect)</div>
+        </div>
+    </div>
+
+    <div class="charts-grid">
+        <div class="panel">
+            <div class="panel-title"><span>⏱️ Response Time p95 (ms) vs SLA Threshold (2000ms)</span><span>SCRUM-11 Evidence</span></div>
+            <div class="chart-box"><canvas id="latencyChart"></canvas></div>
+        </div>
+        <div class="panel">
+            <div class="panel-title"><span>👥 Active Virtual Users (VUs) & Throughput (RPS)</span><span>Load Profile</span></div>
+            <div class="chart-box"><canvas id="vuChart"></canvas></div>
+        </div>
+    </div>
+
+    <script>
+        const labels = ['11:41:00', '11:42:00', '11:43:00', '11:44:00', '11:45:00', '11:46:00', '11:47:00', '11:48:00', '11:49:00', '11:410:00'];
+        new Chart(document.getElementById('latencyChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'p95 Response Time (ms)',
+                        data: [554.1, 537.6, 438.7, 2209.2, 2317.3, 5330.5, 5569.6, 5551.5, 1897.7, 417.9],
+                        borderColor: '#f2495c',
+                        backgroundColor: 'rgba(242, 73, 92, 0.18)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'SLA Maximum Limit (2000 ms)',
+                        data: Array(labels.length).fill(2000),
+                        borderColor: '#73bf69',
+                        borderDash: [6, 6],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#ccccdc' } } },
+                scales: {
+                    x: { ticks: { color: '#8e8e9e' }, grid: { color: '#22252b' } },
+                    y: { ticks: { color: '#8e8e9e' }, grid: { color: '#22252b' } }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('vuChart'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Virtual Users (VUs)',
+                        data: [10, 50, 100, 200, 300, 400, 500, 500, 300, 100],
+                        borderColor: '#5794f2',
+                        backgroundColor: 'rgba(87, 148, 242, 0.15)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Throughput (Requests/sec)',
+                        data: [23.2, 92.0, 185.8, 479.1, 555.7, 813.4, 1106.3, 906.6, 562.0, 203.1],
+                        borderColor: '#73bf69',
+                        tension: 0.3,
+                        borderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: '#ccccdc' } } },
+                scales: {
+                    x: { ticks: { color: '#8e8e9e' }, grid: { color: '#22252b' } },
+                    y: { ticks: { color: '#8e8e9e' }, grid: { color: '#22252b' } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
